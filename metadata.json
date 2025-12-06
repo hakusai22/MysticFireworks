@@ -1,0 +1,5 @@
+{
+  "name": "Mystic Fireworks",
+  "description": "A mystical, tarot-themed firework generator controlled by mouse clicks. Features complex particle physics and procedural audio.",
+  "requestFramePermissions": []
+}
