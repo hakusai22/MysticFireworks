@@ -9,16 +9,17 @@ interface FireworkCanvasProps {
 
 // --- Visual Configuration ---
 // User requested: "I like Blue" - Switched to Neon Blue / Royal Blue themes
+// CHANGED: Used rgb() strings so .replace works for gradients
 const PALETTES = [
   { 
     name: 'Electric Blue', 
-    innerColor: '#00FFFF', // Cyan
-    haloColor: '#0055FF'   // Royal Blue
+    innerColor: 'rgb(0, 255, 255)', // Cyan #00FFFF
+    haloColor: 'rgb(0, 85, 255)'    // Royal Blue #0055FF
   }, 
   { 
     name: 'Ocean Depths', 
-    innerColor: '#1E90FF', // Dodger Blue
-    haloColor: '#000080'   // Navy Blue
+    innerColor: 'rgb(30, 144, 255)', // Dodger Blue #1E90FF
+    haloColor: 'rgb(0, 0, 128)'      // Navy Blue #000080
   }
 ];
 
@@ -145,8 +146,12 @@ class Particle {
         this.history[0].x, this.history[0].y, 
         this.x, this.y
       );
+      
+      // Use rgb string replacement for transparency which now works because colors are rgb(...)
+      const tailColor = this.haloColor.replace(')', ', 0.2)').replace('rgb', 'rgba');
+
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
-      gradient.addColorStop(0.2, this.haloColor.replace(')', ', 0.2)')); // Faint
+      gradient.addColorStop(0.2, tailColor); // Faint
       gradient.addColorStop(1, this.innerColor); // Bright
       
       ctx.strokeStyle = gradient;
