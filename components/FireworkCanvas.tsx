@@ -8,18 +8,13 @@ interface FireworkCanvasProps {
 }
 
 // --- Visual Configuration ---
-// User requested: "I like Blue" - Switched to Neon Blue / Royal Blue themes
-// CHANGED: Used rgb() strings so .replace works for gradients
+// UPDATED: Standardized to the "Middle Blue" (Azure/Electric Blue) as requested.
+// All fireworks will now use this single color scheme.
 const PALETTES = [
   { 
-    name: 'Electric Blue', 
-    innerColor: 'rgb(0, 255, 255)', // Cyan #00FFFF
-    haloColor: 'rgb(0, 85, 255)'    // Royal Blue #0055FF
-  }, 
-  { 
-    name: 'Ocean Depths', 
-    innerColor: 'rgb(30, 144, 255)', // Dodger Blue #1E90FF
-    haloColor: 'rgb(0, 0, 128)'      // Navy Blue #000080
+    name: 'Mystic Blue', 
+    innerColor: 'rgb(0, 255, 255)',   // Bright Cyan (The "Center" look)
+    haloColor: 'rgb(0, 100, 255)'     // Electric Blue Halo
   }
 ];
 
@@ -44,7 +39,7 @@ class Particle {
   rotationSpeed: number;
   type: 'core' | 'shell' | 'sparkle' | 'willow';
 
-  constructor(x: number, y: number, innerColor: string, haloColor: string, speed: number, angle: number, type: 'core' | 'shell' | 'sparkle' | 'willow') {
+  constructor(x: number, y: number, innerColor: string, haloColor: string, speed: number, angle: number, type: 'core' | 'shell' | 'sparkle' | 'willow', scale: number = 1.0) {
     this.x = x;
     this.y = y;
     this.innerColor = innerColor;
@@ -54,11 +49,12 @@ class Particle {
     this.age = 0;
 
     // 3D-ish velocity projection to 2D
-    this.vx = Math.cos(angle) * speed;
-    this.vy = Math.sin(angle) * speed;
+    // Scale velocity slightly with size for physics consistency
+    const speedMult = type === 'shell' ? (scale * 0.8 + 0.2) : 1.0; 
+    this.vx = Math.cos(angle) * speed * speedMult;
+    this.vy = Math.sin(angle) * speed * speedMult;
     
     // REQ: All hearts must be upright ("正的")
-    // Disabled random rotation and rotationSpeed
     this.rotation = 0;
     this.rotationSpeed = 0; 
 
@@ -66,28 +62,29 @@ class Particle {
 
     // PHYSICS TWEAKS FOR 0.8x SPEED (Maintained)
     if (type === 'shell') {
-      this.friction = 0.968; 
+      // UPDATED: Less friction (closer to 1) so they fly wider
+      this.friction = 0.975; 
       this.gravity = 0.022;  
       this.life = 150 + Math.random() * 50; 
-      this.targetSize = 16.0; // Large size
+      this.targetSize = 16.0 * scale; // Apply Scale
       this.bloomDelay = 19 + Math.random() * 19; 
     } else if (type === 'core') {
       this.friction = 0.936; 
       this.gravity = 0.022;
       this.life = 75 + Math.random() * 25; 
-      this.targetSize = 10.0;
-      this.bloomDelay = 0; // Core blooms instantly
+      this.targetSize = 10.0 * scale; // Apply Scale
+      this.bloomDelay = 0; 
     } else if (type === 'willow') {
       this.friction = 0.944; 
       this.gravity = 0.013;  
       this.life = 175 + Math.random() * 50; 
-      this.targetSize = 9.0;
+      this.targetSize = 9.0 * scale; // Apply Scale
       this.bloomDelay = 6 + Math.random() * 13;
     } else { // Sparkle
       this.friction = 0.90; 
       this.gravity = 0.025; 
       this.life = 65 + Math.random() * 30;
-      this.targetSize = 6.0;
+      this.targetSize = 6.0 * scale; // Apply Scale
       this.bloomDelay = 0;
     }
     
@@ -99,7 +96,6 @@ class Particle {
     this.age++;
 
     // Add TURBULENCE / JITTER
-    // This creates organic, non-straight paths ("Scattering route")
     if (this.type === 'shell') {
       this.vx += (Math.random() - 0.5) * 0.08;
       this.vy += (Math.random() - 0.5) * 0.08;
@@ -112,12 +108,10 @@ class Particle {
     this.x += this.vx;
     this.y += this.vy;
     
-    this.rotation += this.rotationSpeed;
-    
     // Logic: Only start growing the heart after the bloom delay
     if (this.age >= this.bloomDelay) {
       if (this.currentSize < this.targetSize) {
-        // "Pop" animation - slightly slower pop for the slow-mo feel
+        // "Pop" animation
         this.currentSize += (this.targetSize - this.currentSize) * 0.15; 
       }
     }
@@ -125,47 +119,37 @@ class Particle {
     this.life--;
     this.alpha = Math.max(0, this.life / this.maxLife);
 
-    // Trail logic: Record history every frame for a smooth continuous line
-    // Simulates the physical path/route of the spark
+    // Trail logic
     if (this.alpha > 0.05) {
       this.history.push({x: this.x, y: this.y});
-      // Keep a longer tail for the "scattering route" effect
-      // Increased to 25 to show curves during fall
       if (this.history.length > 25) this.history.shift();
     }
   }
 
   draw(ctx: CanvasRenderingContext2D) {
     // Phase 1: Scattering Route (Trail)
-    // Simulates the path of the firecracker. Follows the heart.
     if (this.type === 'shell' && this.history.length > 2) {
-      
-      // Create a gradient for the trail (Transparent Tail -> Bright Head)
-      // This gives it a "Comet" look
       const gradient = ctx.createLinearGradient(
         this.history[0].x, this.history[0].y, 
         this.x, this.y
       );
       
-      // Use rgb string replacement for transparency which now works because colors are rgb(...)
       const tailColor = this.haloColor.replace(')', ', 0.2)').replace('rgb', 'rgba');
 
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
-      gradient.addColorStop(0.2, tailColor); // Faint
-      gradient.addColorStop(1, this.innerColor); // Bright
+      gradient.addColorStop(0.2, tailColor); 
+      gradient.addColorStop(1, this.innerColor); 
       
       ctx.strokeStyle = gradient;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = Math.max(1, this.targetSize * 0.2); // Scale trail width
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       
-      // Draw SMOOTH Curve using Quadratic Bezier interpolation
       ctx.beginPath();
       ctx.moveTo(this.history[0].x, this.history[0].y);
       for (let i = 0; i < this.history.length - 1; i++) {
         const p0 = this.history[i];
         const p1 = this.history[i + 1];
-        // Midpoint for quadratic curve control
         const midX = (p0.x + p1.x) / 2;
         const midY = (p0.y + p1.y) / 2;
         ctx.quadraticCurveTo(p0.x, p0.y, midX, midY);
@@ -174,58 +158,42 @@ class Particle {
       ctx.globalAlpha = this.alpha * 0.8; 
       ctx.stroke();
 
-      ctx.globalAlpha = this.alpha; // Reset alpha
+      ctx.globalAlpha = this.alpha; 
     }
 
-    // Phase 2: Neon Border Hearts with Outside-to-Inside Gradient
+    // Phase 2: Neon Border Hearts
     if (this.currentSize > 0.1) {
       ctx.save();
       ctx.translate(this.x, this.y);
-      // ctx.rotate(this.rotation); // Removed rotation effect effectively since rotation is 0
       
       const s = this.currentSize;
       
       // Define path for "Wide Top, Pointed Bottom" Heart (Q-Style)
       ctx.beginPath();
-      
-      // Start at top center dip
       ctx.moveTo(0, -s * 0.35);
       
-      // Left Lobe: High, Round, Plump
-      ctx.bezierCurveTo(
-        -s * 0.9, -s * 1.2, // Control 1: High arch
-        -s * 1.6, -s * 0.5, // Control 2: Wide belly
-        -s * 1.6, s * 0.1   // End: Widest point
-      );
-      
-      // Left Tip: Sharp convergence
-      ctx.bezierCurveTo(
-        -s * 1.6, s * 0.8,  // Control 1: Curve down
-        -s * 0.6, s * 1.4,  // Control 2: Sharp approach
-        0, s * 1.7          // End: Bottom Tip (Pointed)
-      );
-      
-      // Right Side Mirror
+      // Left Lobe
+      ctx.bezierCurveTo(-s * 0.9, -s * 1.2, -s * 1.6, -s * 0.5, -s * 1.6, s * 0.1);
+      // Left Tip
+      ctx.bezierCurveTo(-s * 1.6, s * 0.8, -s * 0.6, s * 1.4, 0, s * 1.7);
+      // Right Side
       ctx.bezierCurveTo(s * 0.6, s * 1.4, s * 1.6, s * 0.8, s * 1.6, s * 0.1);
       ctx.bezierCurveTo(s * 1.6, -s * 0.5, s * 0.9, -s * 1.2, 0, -s * 0.35);
       
       ctx.closePath();
 
-      // FILL: "Outside to Inside Gradient"
-      // Center (0.0) is transparent/faint. Edge (1.0) is stronger.
-      // This mimics light seeping in from the neon rim.
+      // FILL
       const maskGradient = ctx.createRadialGradient(0, -s * 0.2, 0, 0, 0, s * 1.4);
-      maskGradient.addColorStop(0.0, 'rgba(255, 255, 255, 0.05)'); // Center: Almost transparent
-      maskGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.15)'); // Mid: Subtle mist
-      maskGradient.addColorStop(1.0, 'rgba(255, 255, 255, 0.5)');  // Edge: White haze from neon
+      maskGradient.addColorStop(0.0, 'rgba(255, 255, 255, 0.05)'); 
+      maskGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.15)'); 
+      maskGradient.addColorStop(1.0, 'rgba(255, 255, 255, 0.5)'); 
       
       ctx.fillStyle = maskGradient;
       ctx.globalAlpha = this.alpha;
       ctx.fill();
 
-      // STROKE: "Neon Color Border"
-      
-      // 1. Outer Glow (The Halo) - Wide and faint
+      // STROKE
+      // 1. Halo
       ctx.lineWidth = s * 0.25;
       ctx.strokeStyle = this.haloColor;
       ctx.lineCap = 'round';
@@ -233,13 +201,13 @@ class Particle {
       ctx.globalAlpha = this.alpha * 0.3;
       ctx.stroke();
 
-      // 2. Main Neon Tube (The Inner Color) - Sharp and bright
+      // 2. Neon Tube
       ctx.lineWidth = s * 0.1;
       ctx.strokeStyle = this.innerColor;
-      ctx.globalAlpha = this.alpha; // Full opacity
+      ctx.globalAlpha = this.alpha; 
       ctx.stroke();
 
-      // 3. Tube Highlight (Pure White Thin Line) - The glass reflection
+      // 3. Highlight
       ctx.lineWidth = s * 0.03;
       ctx.strokeStyle = '#FFFFFF';
       ctx.globalAlpha = this.alpha * 0.9;
@@ -260,136 +228,141 @@ class Rocket {
   speed: number;
   color: string;
   exploded: boolean = false;
+  paletteIndex: number | undefined;
+  scale: number;
   trail: {x: number, y: number, alpha: number}[];
 
-  constructor(x: number, startY: number, targetY: number) {
+  constructor(x: number, startY: number, targetY: number, paletteIndex?: number, scale: number = 1.0) {
     this.x = x;
     this.y = startY;
     this.startY = startY;
     this.targetY = targetY;
-    this.color = '#E0FFFF'; // Light Cyan (to match blue theme)
-    this.speed = 11; // 0.8x approx
+    this.paletteIndex = paletteIndex;
+    this.scale = scale;
+    this.speed = -12; // Vertical speed
+    this.color = '#E0FFFF'; // Light Cyan
     this.trail = [];
   }
 
   update() {
-    const dist = this.y - this.targetY;
-    if (dist > 150) {
-      this.y -= this.speed;
-    } else {
-      // Slower deceleration
-      this.y -= Math.max(2.5, dist * 0.07); 
-    }
+    this.y += this.speed;
+    
+    // Simple trail
+    this.trail.push({x: this.x, y: this.y, alpha: 1.0});
+    if (this.trail.length > 20) this.trail.shift();
+    this.trail.forEach(t => t.alpha *= 0.85);
 
-    this.trail.push({x: this.x + (Math.random() - 0.5) * 2, y: this.y, alpha: 1.0});
-    for(let i=0; i<this.trail.length; i++) {
-      this.trail[i].alpha -= 0.12; 
-    }
-    this.trail = this.trail.filter(t => t.alpha > 0);
-
-    if (this.y <= this.targetY + 10) { 
+    if (this.y <= this.targetY) {
       this.exploded = true;
     }
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    ctx.fillStyle = this.color;
-    
-    this.trail.forEach(t => {
-      ctx.globalAlpha = t.alpha;
+    // Draw trail
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < this.trail.length - 1; i++) {
+      const t1 = this.trail[i];
+      const t2 = this.trail[i+1];
+      ctx.strokeStyle = `rgba(224, 255, 255, ${t1.alpha * 0.5})`;
       ctx.beginPath();
-      ctx.arc(t.x, t.y, 2, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    
-    ctx.globalAlpha = 1;
+      ctx.moveTo(t1.x, t1.y);
+      ctx.lineTo(t2.x, t2.y);
+      ctx.stroke();
+    }
+
+    // Draw Rocket Head
+    ctx.fillStyle = this.color;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = this.color;
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 }
 
 const FireworkCanvas: React.FC<FireworkCanvasProps> = ({ triggerQueue, onTriggerProcessed }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rocketsRef = useRef<Rocket[]>([]);
   const particlesRef = useRef<Particle[]>([]);
-  const animationFrameRef = useRef<number>();
+  const rocketsRef = useRef<Rocket[]>([]);
 
-  const createExplosion = useCallback((x: number, y: number) => {
+  const createExplosion = (rocket: Rocket) => {
     playExplosionSound();
     
-    const palette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+    // With only one palette, modulo ensures we always pick Index 0
+    const paletteIdx = rocket.paletteIndex !== undefined 
+      ? rocket.paletteIndex 
+      : 0;
+      
+    const palette = PALETTES[paletteIdx % PALETTES.length];
     
-    // 1. Core (Dense center)
-    const coreCount = 15;
-    for (let i = 0; i < coreCount; i++) {
+    // UPDATED: Reduce count for "less dense" feel (was 120)
+    const particleCount = 80; 
+    
+    // Core (Instant bloom)
+    for (let i = 0; i < 15; i++) {
+      const angle = (Math.PI * 2 / 15) * i;
+      const speed = Math.random() * 2;
+      particlesRef.current.push(new Particle(rocket.x, rocket.y, palette.innerColor, palette.haloColor, speed, angle, 'core', rocket.scale));
+    }
+
+    // Main Shell (Delayed bloom)
+    for (let i = 0; i < particleCount; i++) {
+      // UPDATED: Even distribution (Uniform angles)
+      const angle = (Math.PI * 2 * i) / particleCount;
+      
+      // UPDATED: Faster speed for "Wider Range"
+      // Range: 6.0 * 0.8 = 4.8  to  12.0 * 0.8 = 9.6
+      const r = Math.random();
+      const speed = (6 + r * 6) * 0.8; 
+      
+      particlesRef.current.push(new Particle(rocket.x, rocket.y, palette.innerColor, palette.haloColor, speed, angle, 'shell', rocket.scale));
+    }
+    
+    // Sparkles
+    for (let i = 0; i < 30; i++) {
        const angle = Math.random() * Math.PI * 2;
-       const speed = Math.random() * 2.4;
-       particlesRef.current.push(new Particle(x, y, palette.innerColor, palette.haloColor, speed, angle, 'core'));
+       const speed = Math.random() * 8;
+       particlesRef.current.push(new Particle(rocket.x, rocket.y, '#FFFFFF', palette.haloColor, speed, angle, 'sparkle', rocket.scale));
     }
-
-    // 2. Main Shell (Large uniform sphere)
-    const shellCount = 120; 
-    for (let i = 0; i < shellCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 4.8 + Math.random() * 9.6; 
-      particlesRef.current.push(new Particle(x, y, palette.innerColor, palette.haloColor, speed, angle, 'shell'));
-    }
-
-    // 3. Pistil / Glitter (Sparkling overlay)
-    const willowCount = 40;
-    for (let i = 0; i < willowCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 12; 
-      particlesRef.current.push(new Particle(x, y, '#FFFFFF', palette.haloColor, speed, angle, 'willow'));
-    }
-  }, []);
-
-  const launchFirework = useCallback((x: number, targetY: number) => {
-    playLaunchSound();
-    rocketsRef.current.push(new Rocket(x, window.innerHeight, targetY));
-  }, []);
+  };
 
   useEffect(() => {
     if (triggerQueue.length > 0) {
       triggerQueue.forEach(coord => {
-        const targetY = Math.max(coord.y, window.innerHeight * 0.15); 
-        launchFirework(coord.x, targetY);
+        playLaunchSound();
+        const targetY = coord.y;
+        rocketsRef.current.push(new Rocket(coord.x, window.innerHeight, targetY, coord.paletteIndex, coord.scale));
       });
       onTriggerProcessed();
     }
-  }, [triggerQueue, launchFirework, onTriggerProcessed]);
+  }, [triggerQueue, onTriggerProcessed]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    let animationFrameId: number;
 
-    const animate = () => {
-      // Clear with slight opacity for trails
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; 
+    const render = () => {
+      // Clear canvas with trail effect
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Fades out previous frames
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Additive blending for neon glow
+      
       ctx.globalCompositeOperation = 'lighter';
 
       // Update Rockets
       for (let i = rocketsRef.current.length - 1; i >= 0; i--) {
-        const rocket = rocketsRef.current[i];
-        rocket.update();
-        rocket.draw(ctx);
-        if (rocket.exploded) {
-          createExplosion(rocket.x, rocket.y);
+        const r = rocketsRef.current[i];
+        r.update();
+        r.draw(ctx);
+        if (r.exploded) {
+          createExplosion(r);
           rocketsRef.current.splice(i, 1);
         }
       }
@@ -404,18 +377,25 @@ const FireworkCanvas: React.FC<FireworkCanvasProps> = ({ triggerQueue, onTrigger
         }
       }
 
-      animationFrameRef.current = requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(render);
     };
 
-    animate();
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    render();
 
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameId);
     };
-  }, [createExplosion]);
+  }, []);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-10" />;
+  return <canvas ref={canvasRef} className="absolute inset-0 z-10 block" />;
 };
 
 export default FireworkCanvas;
