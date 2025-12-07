@@ -2,9 +2,9 @@ import React, { useRef, useEffect } from 'react';
 
 interface MosaicBackgroundProps {
   animate: boolean;
+  texts: string[];
 }
 
-const TEXTS = ['YOLO', '皆得所愿'];
 const CELL_SIZE = 12; // Size of each mosaic block
 const GAP = 2;        // Gap between blocks
 
@@ -16,18 +16,32 @@ const PALETTE = [
   '#00BFFF', // Deep Sky Blue (Mid-tone transition)
 ];
 
-const MosaicBackground: React.FC<MosaicBackgroundProps> = ({ animate }) => {
+const MosaicBackground: React.FC<MosaicBackgroundProps> = ({ animate, texts }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  
   // Refs to hold mutable state without re-triggering effects
   const stateRef = useRef({
     textIndex: 0,
     intervalId: null as number | null,
-    isFirstRender: true
   });
 
-  // Hack: Since the heavy logic is inside the closure of the first effect, 
-  // we will re-implement the Interval logic inside the main effect using a ref to track the 'animate' prop.
+  const textsRef = useRef(texts);
   const animateRef = useRef(animate);
+  
+  // Store the grid update function so we can call it from other effects
+  const updateGridRef = useRef<() => void>(() => {});
+
+  // Sync props to refs
+  useEffect(() => {
+    textsRef.current = texts;
+    // If we are not animating (static mode) and text changes, update immediately
+    // so the user sees what they type.
+    if (!animateRef.current && updateGridRef.current) {
+        stateRef.current.textIndex = 0;
+        updateGridRef.current();
+    }
+  }, [texts]);
+
   useEffect(() => {
     animateRef.current = animate;
   }, [animate]);
@@ -75,7 +89,12 @@ const MosaicBackground: React.FC<MosaicBackgroundProps> = ({ animate }) => {
       offCtx.textBaseline = 'middle';
       const fontSize = Math.min(width * 0.25, 400);
       offCtx.font = `900 ${fontSize}px "Cinzel", "Microsoft YaHei", serif`;
-      offCtx.fillText(TEXTS[stateRef.current.textIndex], width / 2, height / 2);
+      
+      const currentTexts = textsRef.current.length > 0 ? textsRef.current : [''];
+      // Ensure index is valid
+      const safeIndex = stateRef.current.textIndex % currentTexts.length;
+      
+      offCtx.fillText(currentTexts[safeIndex], width / 2, height / 2);
       const imgData = offCtx.getImageData(0, 0, width, height).data;
 
       for (let r = 0; r < rows; r++) {
@@ -96,6 +115,9 @@ const MosaicBackground: React.FC<MosaicBackgroundProps> = ({ animate }) => {
       }
     };
 
+    // Expose update function to ref
+    updateGridRef.current = updateGridTargets;
+
     // Initial render
     updateGridTargets();
 
@@ -108,8 +130,11 @@ const MosaicBackground: React.FC<MosaicBackgroundProps> = ({ animate }) => {
       if (animateRef.current) {
         // Switch text every 1500ms
         if (Date.now() - lastSwitchTime > 1500) {
-          stateRef.current.textIndex = (stateRef.current.textIndex + 1) % TEXTS.length;
-          updateGridTargets();
+          const currentTexts = textsRef.current;
+          if (currentTexts.length > 0) {
+              stateRef.current.textIndex = (stateRef.current.textIndex + 1) % currentTexts.length;
+              updateGridTargets();
+          }
           lastSwitchTime = Date.now();
         }
       } else {
@@ -123,6 +148,7 @@ const MosaicBackground: React.FC<MosaicBackgroundProps> = ({ animate }) => {
           const cell = grid[i];
           if (!cell) continue;
           const diff = cell.targetAlpha - cell.alpha;
+          // Smooth interpolation
           if (Math.abs(diff) > 0.005) cell.alpha += diff * cell.transitionSpeed;
           else cell.alpha = cell.targetAlpha;
 

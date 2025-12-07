@@ -7,6 +7,16 @@ import { Coordinates } from './types';
 const App: React.FC = () => {
   const [triggerQueue, setTriggerQueue] = useState<Coordinates[]>([]);
   const [isTextAnimating, setIsTextAnimating] = useState(false);
+  const [inputText, setInputText] = useState('YOLO,皆得所愿');
+
+  // Parse input text into array
+  const backgroundTexts = inputText
+    .split(/[,，]/) // Split by English or Chinese comma
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
+  
+  // Fallback if empty
+  const displayTexts = backgroundTexts.length > 0 ? backgroundTexts : ['Mystic'];
 
   const triggerFormation = useCallback(() => {
     const w = window.innerWidth;
@@ -48,6 +58,7 @@ const App: React.FC = () => {
   // Handler for mouse click
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button')) return;
+    if ((e.target as HTMLElement).closest('input')) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -86,7 +97,7 @@ const App: React.FC = () => {
       className="relative w-full h-screen bg-[#050505] cursor-crosshair overflow-hidden"
       onClick={handleCanvasClick}
     >
-      <MosaicBackground animate={isTextAnimating} />
+      <MosaicBackground animate={isTextAnimating} texts={displayTexts} />
       <FireworkCanvas 
         triggerQueue={triggerQueue} 
         onTriggerProcessed={clearQueue} 
@@ -94,6 +105,20 @@ const App: React.FC = () => {
       
       <UIOverlay status="" />
       
+      {/* Input Field for Custom Text */}
+      <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 z-40 w-64 md:w-80">
+        <input 
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="YOLO, 皆得所愿"
+          className="w-full bg-black/40 border-b-2 border-[#d4af37]/50 text-[#d4af37] text-center
+                     font-tarot tracking-widest text-lg outline-none py-2 px-4 
+                     placeholder-[#d4af37]/30 transition-all duration-300
+                     focus:border-[#d4af37] focus:bg-black/60 focus:scale-105"
+        />
+      </div>
+
       {/* Trigger Button */}
       <button 
         onClick={handleIgnite}
