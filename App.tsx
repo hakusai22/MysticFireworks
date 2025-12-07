@@ -7,7 +7,7 @@ import { Coordinates } from './types';
 const App: React.FC = () => {
   const [triggerQueue, setTriggerQueue] = useState<Coordinates[]>([]);
   const [isTextAnimating, setIsTextAnimating] = useState(false);
-  const [inputText, setInputText] = useState('YOLO,皆得所愿');
+  const [inputText, setInputText] = useState('Christmas');
 
   // Parse input text into array
   const backgroundTexts = inputText
