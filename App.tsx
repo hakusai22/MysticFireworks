@@ -7,7 +7,7 @@ import { Coordinates } from './types';
 const App: React.FC = () => {
   const [triggerQueue, setTriggerQueue] = useState<Coordinates[]>([]);
   const [isTextAnimating, setIsTextAnimating] = useState(false);
-  const [inputText, setInputText] = useState('Christmas');
+  const [inputText, setInputText] = useState('Spark');
 
   // Parse input text into array
   const backgroundTexts = inputText
@@ -16,7 +16,7 @@ const App: React.FC = () => {
     .filter(t => t.length > 0);
   
   // Fallback if empty
-  const displayTexts = backgroundTexts.length > 0 ? backgroundTexts : ['Mystic'];
+  const displayTexts = backgroundTexts.length > 0 ? backgroundTexts : ['Spark'];
 
   const triggerFormation = useCallback(() => {
     const w = window.innerWidth;
