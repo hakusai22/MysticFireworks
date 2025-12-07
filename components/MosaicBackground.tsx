@@ -8,12 +8,12 @@ interface MosaicBackgroundProps {
 const CELL_SIZE = 12; // Size of each mosaic block
 const GAP = 2;        // Gap between blocks
 
-// UPDATED: Palette synchronized with FireworkCanvas "Mystic Blue" theme
+// UPDATED: Palette changed to White/Silver themes as requested
 const PALETTE = [
-  '#00FFFF', // Cyan (Firework Inner Core)
-  '#0064FF', // Electric Blue (Firework Halo)
-  '#E0FFFF', // Light Cyan (Rocket Trail)
-  '#00BFFF', // Deep Sky Blue (Mid-tone transition)
+  '#FFFFFF', // Pure White
+  '#F8F8FF', // Ghost White
+  '#F0F8FF', // Alice Blue (Subtle cool white)
+  '#E5E4E2', // Platinum (Silver white)
 ];
 
 const MosaicBackground: React.FC<MosaicBackgroundProps> = ({ animate, texts }) => {
@@ -159,7 +159,7 @@ const MosaicBackground: React.FC<MosaicBackgroundProps> = ({ animate, texts }) =
             ctx.globalAlpha = cell.alpha;
             ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
             if (cell.alpha > 0.8) {
-               ctx.fillStyle = 'rgba(255,255,255,0.4)';
+               ctx.fillStyle = 'rgba(255,255,255,0.4)'; // Highlight center
                ctx.fillRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
             }
           }

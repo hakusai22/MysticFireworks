@@ -1,5 +1,6 @@
 // AudioContext singleton
 let audioCtx: AudioContext | null = null;
+let lastOut = 0; // Moved to top to prevent TDZ errors
 
 const initAudio = () => {
   if (!audioCtx) {
@@ -116,5 +117,3 @@ export const playExplosionSound = () => {
      crackleOsc.stop(ctx.currentTime + 0.1);
   }, 100 + Math.random() * 200);
 };
-
-let lastOut = 0;

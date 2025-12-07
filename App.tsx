@@ -111,7 +111,7 @@ const App: React.FC = () => {
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="YOLO, 皆得所愿"
+          placeholder="Spark"
           className="w-full bg-black/40 border-b-2 border-[#d4af37]/50 text-[#d4af37] text-center
                      font-tarot tracking-widest text-lg outline-none py-2 px-4 
                      placeholder-[#d4af37]/30 transition-all duration-300
